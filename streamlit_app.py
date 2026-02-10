@@ -1,98 +1,95 @@
 # importing streamlit
 import streamlit as st
-
-# Set web application title and description
-st.title("Project Genesis")
-st.write(
-    "This is a web application built using Streamlit"
-)
-# sample data as display
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
 
-martket_data = {
-    "Company": ["Apple", "Google", "Microsoft", "Amazon"],
-    "Stock Price": [150, 2800, 300, 3500],
-    "Market Cap (Billion USD)": [2500, 1800, 2200, 1700],
-}
+def main():
+    st.title("Loan Default Prediction App")
 
-df = pd.DataFrame(martket_data)
+    # Sidebar navigation
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", ["EDA", "ML Modeling"])
 
-# Display data as a table
-st.header("Market Data Table")
-st.subheader("Stock Prices and Market Capitalization Table")
-st.dataframe(df)
+    if page == "EDA":
+        show_eda_page()
+    elif page == "ML Modeling":
+        show_ml_modeling_page()
 
-# Display data as a line chart
-st.header("Market Data Line Chart")
-st.subheader("Stock Prices Line Chart")
-st.line_chart(df.set_index("Company")["Stock Price"])   
+def show_eda_page():
+    st.header("Exploratory Data Analysis")
 
-# Charts
-st.header("Market Data Visualization")
-st.subheader("Stock Prices")
-st.bar_chart(df.set_index("Company")["Stock Price"])
+    # Load dataset
+    data_url = "https://raw.githubusercontent.com/josephgitau/project_defcone/refs/heads/main/Data/Loan/Loan_default.csv"
+    @st.cache_data
+    def load_data():
+        return pd.read_csv(data_url)
 
-# markdown in streamlit
-st.header("Markdown Example")
-st.markdown("""
-## Data Description
+    df = load_data()
 
-### Input Files
+    # Display dataset
+    st.subheader("Dataset")
+    st.write(df.head())
 
-| File | Description | Size | Records |
-|------|-------------|------|---------|
-| `Train.csv` | Historical customer-product-week data | 275 MB | ~5M rows |
-| `Test.csv` | Test set for predictions | 27 MB | ~500K rows |
-| `SampleSubmission.csv` | Submission format | 7 MB | ~500K rows |
+    # Display basic statistics
+    st.subheader("Basic Statistics")
+    st.write(df.describe())
 
-### Key Columns
+    # Visualizations
+    st.subheader("Visualizations")
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `customer_id` | ID | Unique customer identifier |
-| `product_unit_variant_id` | ID | Unique product variant identifier |
-| `week_start` | Date | Week start date |
-| `purchased_this_week` | Binary | Purchase indicator (0/1) |
-| `qty_this_week` | Float | Quantity purchased |
-| `customer_category` | Category | Customer segment |
-| `customer_status` | Category | Customer status |
-| `grade_name` | Category | Product grade |
-| `unit_name` | Category | Product unit type |
+    # Correlation heatmap
+    st.write("Correlation Heatmap")
+    fig, ax = plt.subplots()
+    sns.heatmap(df.corr(), annot=True, fmt=".2f", cmap="coolwarm", ax=ax)
+    st.pyplot(fig)
 
-### Targets
+    # Distribution of target variable
+    if 'Loan_Default' in df.columns:
+        st.write("Distribution of Loan Default")
+        fig, ax = plt.subplots()
+        sns.countplot(x='Loan_Default', data=df, ax=ax)
+        st.pyplot(fig)
 
-| Target | Type | Description |
-|--------|------|-------------|
-| `Target_purchase_next_1w` | Binary | Will purchase in next 1 week? |
-| `Target_purchase_next_2w` | Binary | Will purchase in next 2 weeks? |
-| `Target_qty_next_1w` | Float | Quantity in next 1 week |
-| `Target_qty_next_2w` | Float | Quantity in next 2 weeks |
+def show_ml_modeling_page():
+    st.header("Machine Learning Modeling")
 
----
-""")
+    # Load dataset
+    data_url = "https://raw.githubusercontent.com/josephgitau/project_defcone/refs/heads/main/Data/Loan/Loan_default.csv"
+    @st.cache_data
+    def load_data():
+        return pd.read_csv(data_url)
 
-# metrics in streamlit
-st.header("Metrics Example")
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Customers", "1,000,000", "5% increase")
-col2.metric("Total Products", "10,000", "-2% decrease")
-col3.metric("Total Purchases", "500,000", "10% increase")   
+    df = load_data()
 
-# Streamlit Basics
-st.header("Streamlit Basics")
-st.markdown("""
-## Text and Formatting
-- Use `st.write()` for simple text output.
-- Use `st.markdown()` for formatted text and markdown support.
-## Data Display
-- Use `st.dataframe()` to display interactive tables.
-- Use `st.table()` for static tables.
-            
-## Charts and Visualizations
-- Use `st.line_chart()`, `st.bar_chart()`, and `st.area_chart()` for quick visualizations.
-- For more complex charts, use libraries like Matplotlib or Seaborn and display with `st.pyplot()`.
-## Layout and Interactivity
-- Use `st.columns()` to create multi-column layouts.
-- Use `st.expander()` to hide/show content.
-- Use `st.form()` to create interactive forms for user input.
-""")
+    # Check if target column exists
+    if 'Loan_Default' not in df.columns:
+        st.error("The dataset does not contain the 'Loan_Default' column.")
+        return
+
+    # Split data into features and target
+    X = df.drop(columns=['Loan_Default'])
+    y = df['Loan_Default']
+
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train a Random Forest model
+    model = RandomForestClassifier(random_state=42)
+    model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred = model.predict(X_test)
+
+    # Display results
+    st.subheader("Model Performance")
+    st.write("Accuracy:", accuracy_score(y_test, y_pred))
+
+    st.subheader("Classification Report")
+    st.text(classification_report(y_test, y_pred))
+
+if __name__ == "__main__":
+    main()
